@@ -6,8 +6,12 @@ Offscreen is a self-use iOS app for reducing recreational screen time with AI-as
 
 - SwiftUI dashboard for daily allowance and remaining time
 - Local 30-day reduction plan
-- AI API settings placeholder
-- Daily check-in placeholder
+- Keychain-backed AI API key storage and OpenAI-compatible client
+- Daily check-in flow with AI review data model
+- Screen Time authorization, picker, and ManagedSettings restriction entry points
+- HealthKit authorization and activity reward calculation
+- Daily video and cancellation cooldown valid-watch-time tracker
+- Local notification scheduling for the 9 PM check-in and session warning
 - Health reward and Screen Time capability notes
 - GitHub Actions workflow for simulator build and signed IPA export
 
@@ -36,5 +40,4 @@ The workflow in `.github/workflows/ios-build.yml` follows the existing `opsai-ss
 - `IOS_CERT_PEM_BASE64`
 - `IOS_KEY_PEM_BASE64`
 
-The app currently avoids privileged Screen Time entitlements so the initial IPA can build with a normal ad-hoc profile. FamilyControls, DeviceActivity, ManagedSettings, and HealthKit should be enabled after the matching Apple capabilities and provisioning profile are ready.
-
+The code includes FamilyControls, ManagedSettings, and HealthKit integration points. Real device enforcement still requires the matching Apple capabilities and a provisioning profile that contains those entitlements.

@@ -15,7 +15,8 @@ enum PlanEngine {
                 penaltyMinutes: 0,
                 usedMinutes: 0,
                 completedCheckIn: false,
-                completedVideo: false
+                completedVideo: false,
+                completedHealthGoal: false
             )
         }
 
@@ -28,4 +29,3 @@ enum PlanEngine {
         )
     }
 }
-

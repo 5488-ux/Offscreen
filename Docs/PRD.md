@@ -34,7 +34,10 @@ Offscreen is an AI-assisted iOS app for reducing recreational phone use. It comb
 3. Dashboard showing today limit, used minutes, and remaining minutes.
 4. Start/stop play session state.
 5. Daily check-in UI.
-6. GitHub Actions IPA pipeline.
+6. Screen Time authorization and app picker entry point.
+7. HealthKit reward entry point.
+8. Video watch-time tracker with placeholder bundle filenames.
+9. GitHub Actions IPA pipeline.
 
 ## Later modules
 
@@ -44,4 +47,3 @@ Offscreen is an AI-assisted iOS app for reducing recreational phone use. It comb
 - HealthKit authorization and summary.
 - AVPlayer valid-watch-time tracker.
 - AI daily review and plan adjustment.
-

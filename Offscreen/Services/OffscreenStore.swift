@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 @MainActor
@@ -5,7 +6,10 @@ final class OffscreenStore: ObservableObject {
     @Published var aiSettings: AISettings
     @Published var plan: OffscreenPlan
     @Published var checkIns: [DailyCheckIn]
-    @Published var isPlaySessionActive: Bool
+    @Published var videoProgress: [VideoProgress]
+    @Published var penaltyEvents: [PenaltyEvent]
+    @Published var playSession: PlaySessionState
+    @Published var healthSummary: HealthRewardSummary?
 
     private let defaults = UserDefaults.standard
     private let encoder = JSONEncoder()
@@ -18,7 +22,10 @@ final class OffscreenStore: ObservableObject {
         self.aiSettings = Self.load(AISettings.self, key: StorageKey.aiSettings) ?? AISettings()
         self.plan = Self.load(OffscreenPlan.self, key: StorageKey.plan) ?? PlanEngine.makeDefaultPlan()
         self.checkIns = Self.load([DailyCheckIn].self, key: StorageKey.checkIns) ?? []
-        self.isPlaySessionActive = UserDefaults.standard.bool(forKey: StorageKey.playSessionActive)
+        self.videoProgress = Self.load([VideoProgress].self, key: StorageKey.videoProgress) ?? Self.defaultVideoProgress()
+        self.penaltyEvents = Self.load([PenaltyEvent].self, key: StorageKey.penaltyEvents) ?? []
+        self.playSession = Self.load(PlaySessionState.self, key: StorageKey.playSession) ?? PlaySessionState(isActive: false, startedAt: nil, plannedMinutes: 0, endsAt: nil)
+        self.healthSummary = Self.load(HealthRewardSummary.self, key: StorageKey.healthSummary)
     }
 
     var today: PlanDay {
@@ -32,24 +39,90 @@ final class OffscreenStore: ObservableObject {
 
     func startPlaySession(minutes: Int) {
         guard minutes > 0 else { return }
-        isPlaySessionActive = true
-        defaults.set(true, forKey: StorageKey.playSessionActive)
+        let now = Date()
+        playSession = PlaySessionState(
+            isActive: true,
+            startedAt: now,
+            plannedMinutes: minutes,
+            endsAt: Calendar.current.date(byAdding: .minute, value: minutes, to: now)
+        )
+        save(playSession, key: StorageKey.playSession)
     }
 
-    func stopPlaySession(consumedMinutes: Int) {
-        isPlaySessionActive = false
-        defaults.set(false, forKey: StorageKey.playSessionActive)
+    func stopPlaySession(consumedMinutes: Int? = nil) {
+        let minutes = consumedMinutes ?? elapsedPlaySessionMinutes()
+        playSession = PlaySessionState(isActive: false, startedAt: nil, plannedMinutes: 0, endsAt: nil)
+        save(playSession, key: StorageKey.playSession)
         updateToday { day in
-            day.usedMinutes = min(day.finalLimitMinutes, day.usedMinutes + max(0, consumedMinutes))
+            day.usedMinutes = min(day.finalLimitMinutes, day.usedMinutes + max(0, minutes))
         }
     }
 
-    func addCheckIn(text: String) {
-        let checkIn = DailyCheckIn(date: Date(), text: text, imagePath: nil, aiScore: nil, aiFeedback: nil)
+    func elapsedPlaySessionMinutes(now: Date = Date()) -> Int {
+        guard let startedAt = playSession.startedAt else { return 0 }
+        let elapsed = max(0, now.timeIntervalSince(startedAt))
+        return min(playSession.plannedMinutes, Int(ceil(elapsed / 60)))
+    }
+
+    func addCheckIn(text: String, imagePath: String? = nil, review: AIReviewResult? = nil) {
+        let checkIn = DailyCheckIn(
+            date: Date(),
+            text: text,
+            imagePath: imagePath,
+            aiScore: review?.completionScore,
+            aiFeedback: review?.reason
+        )
         checkIns.insert(checkIn, at: 0)
         save(checkIns, key: StorageKey.checkIns)
         updateToday { day in
             day.completedCheckIn = true
+        }
+    }
+
+    func updateVideo(kind: VideoKind, validSeconds: Int) {
+        let today = Calendar.current.startOfDay(for: Date())
+        let required = kind.requiredSeconds
+        if let index = videoProgress.firstIndex(where: { $0.kind == kind && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+            videoProgress[index].watchedValidSeconds = min(required, max(videoProgress[index].watchedValidSeconds, validSeconds))
+            videoProgress[index].completed = videoProgress[index].watchedValidSeconds >= required
+            videoProgress[index].updatedAt = Date()
+        } else {
+            videoProgress.append(VideoProgress(kind: kind, date: today, watchedValidSeconds: min(required, validSeconds), requiredSeconds: required, completed: validSeconds >= required, updatedAt: Date()))
+        }
+        save(videoProgress, key: StorageKey.videoProgress)
+
+        if kind == .daily && validSeconds >= required {
+            updateToday { day in
+                day.completedVideo = true
+            }
+        }
+    }
+
+    func progress(for kind: VideoKind) -> VideoProgress {
+        let today = Calendar.current.startOfDay(for: Date())
+        return videoProgress.first { $0.kind == kind && Calendar.current.isDate($0.date, inSameDayAs: today) }
+            ?? VideoProgress(kind: kind, date: today, watchedValidSeconds: 0, requiredSeconds: kind.requiredSeconds, completed: false, updatedAt: Date())
+    }
+
+    func applyHealthReward(_ summary: HealthRewardSummary) {
+        healthSummary = summary
+        save(summary, key: StorageKey.healthSummary)
+        updateToday { day in
+            day.rewardMinutes = min(15, summary.rewardMinutes)
+            day.completedHealthGoal = summary.rewardMinutes > 0
+        }
+    }
+
+    func recordPenalty(_ event: PenaltyEvent) {
+        penaltyEvents.insert(event, at: 0)
+        save(penaltyEvents, key: StorageKey.penaltyEvents)
+        updateToday { day in
+            day.penaltyMinutes += event.penaltyMinutes
+        }
+
+        if event.extendDays > 0 {
+            plan.extendedDays += event.extendDays
+            save(plan, key: StorageKey.plan)
         }
     }
 
@@ -77,12 +150,21 @@ final class OffscreenStore: ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(type, from: data)
     }
+
+    private static func defaultVideoProgress() -> [VideoProgress] {
+        let today = Calendar.current.startOfDay(for: Date())
+        return VideoKind.allCases.map {
+            VideoProgress(kind: $0, date: today, watchedValidSeconds: 0, requiredSeconds: $0.requiredSeconds, completed: false, updatedAt: Date())
+        }
+    }
 }
 
 private enum StorageKey {
     static let aiSettings = "offscreen.aiSettings"
     static let plan = "offscreen.plan"
     static let checkIns = "offscreen.checkIns"
-    static let playSessionActive = "offscreen.playSessionActive"
+    static let videoProgress = "offscreen.videoProgress"
+    static let penaltyEvents = "offscreen.penaltyEvents"
+    static let playSession = "offscreen.playSession"
+    static let healthSummary = "offscreen.healthSummary"
 }
-

@@ -6,6 +6,17 @@ struct RootView: View {
             DashboardView()
                 .tabItem { Label("Today", systemImage: "timer") }
 
+            ControlView()
+                .tabItem { Label("Control", systemImage: "lock.shield") }
+
+            VideoHubView()
+                .tabItem { Label("Video", systemImage: "play.rectangle") }
+
+            NavigationStack {
+                HealthView()
+            }
+            .tabItem { Label("Health", systemImage: "heart") }
+
             PlanView()
                 .tabItem { Label("Plan", systemImage: "calendar") }
 
@@ -17,4 +28,3 @@ struct RootView: View {
         }
     }
 }
-

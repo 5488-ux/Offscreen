@@ -18,6 +18,7 @@ struct PlanDay: Codable, Identifiable, Equatable {
     var usedMinutes: Int
     var completedCheckIn: Bool
     var completedVideo: Bool
+    var completedHealthGoal: Bool = false
 
     var finalLimitMinutes: Int {
         max(15, baseLimitMinutes + rewardMinutes - penaltyMinutes)
@@ -57,6 +58,15 @@ struct DailyCheckIn: Codable, Identifiable, Equatable {
     var aiFeedback: String?
 }
 
+struct AIReviewResult: Codable, Equatable {
+    var completionScore: Int
+    var summaryQuality: String
+    var imageValid: Bool
+    var tomorrowAdjustmentMinutes: Int
+    var extendPlanDays: Int
+    var reason: String
+}
+
 struct UsageSummary: Codable, Equatable {
     var date: Date
     var totalScreenMinutes: Int
@@ -81,3 +91,73 @@ struct HealthRewardSummary: Codable, Equatable {
     }
 }
 
+enum VideoKind: String, Codable, CaseIterable, Identifiable {
+    case daily
+    case cancellation
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .daily: "Daily video"
+        case .cancellation: "Cancellation cooldown"
+        }
+    }
+
+    var requiredSeconds: Int {
+        switch self {
+        case .daily: 5 * 60
+        case .cancellation: 90 * 60
+        }
+    }
+
+    var bundledFileName: String {
+        switch self {
+        case .daily: "daily-video"
+        case .cancellation: "cancel-cooldown"
+        }
+    }
+}
+
+struct VideoProgress: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var kind: VideoKind
+    var date: Date
+    var watchedValidSeconds: Int
+    var requiredSeconds: Int
+    var completed: Bool
+    var updatedAt: Date
+
+    var remainingSeconds: Int {
+        max(0, requiredSeconds - watchedValidSeconds)
+    }
+
+    var fraction: Double {
+        guard requiredSeconds > 0 else { return 0 }
+        return min(1, Double(watchedValidSeconds) / Double(requiredSeconds))
+    }
+}
+
+struct PlaySessionState: Codable, Equatable {
+    var isActive: Bool
+    var startedAt: Date?
+    var plannedMinutes: Int
+    var endsAt: Date?
+}
+
+enum PenaltyType: String, Codable, CaseIterable {
+    case missedCheckIn
+    case missedVideo
+    case overLimit
+    case revokedPermission
+    case cancelAttempt
+}
+
+struct PenaltyEvent: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var date: Date
+    var type: PenaltyType
+    var penaltyMinutes: Int
+    var extendDays: Int
+    var note: String
+}
