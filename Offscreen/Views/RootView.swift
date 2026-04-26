@@ -23,6 +23,9 @@ private struct MainTabsView: View {
             PlanView()
                 .tabItem { Label("计划", systemImage: "calendar") }
 
+            CheckInView()
+                .tabItem { Label("打卡", systemImage: "square.and.pencil") }
+
             VideoHubView()
                 .tabItem { Label("短片", systemImage: "play.rectangle") }
 

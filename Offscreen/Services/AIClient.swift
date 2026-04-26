@@ -11,6 +11,11 @@ struct AIChatRequest: Codable {
     var temperature: Double = 0.2
 }
 
+struct AIPlanResult: Codable, Equatable {
+    var dailyLimitMinutes: [Int]
+    var coachSummary: String
+}
+
 private struct AIChatChoice: Decodable {
     let message: AIMessage
 }
@@ -30,14 +35,31 @@ final class AIClient {
 
     func makePlanPrompt(summary: UsageSummary) -> String {
         """
-        Create a 30 day phone withdrawal plan for Offscreen.
+        Create a 30 day phone withdrawal plan for Offscreen and return strict JSON only.
         Total screen minutes: \(summary.totalScreenMinutes)
         Entertainment minutes: \(summary.entertainmentMinutes)
         Social minutes: \(summary.socialMinutes)
         Game minutes: \(summary.gameMinutes)
         Over limit: \(summary.isOverLimit)
-        Return compact JSON with daily limits and one daily task.
+        JSON fields: dailyLimitMinutes array of exactly 30 Int values, coachSummary String.
         """
+    }
+
+    func generatePlan(goal: UserGoal, summary: UsageSummary) async throws -> AIPlanResult {
+        let prompt = """
+        \(makePlanPrompt(summary: summary))
+        Current daily entertainment minutes: \(goal.currentDailyMinutes)
+        Target final daily minutes: \(goal.targetDailyMinutes)
+        Severity: \(goal.severity.rawValue)
+        Motivation: \(goal.motivation)
+        Limits must gradually move toward the target without dropping below it.
+        """
+        let content = try await complete(
+            system: "You are Offscreen's behavior-change planner. Return valid compact JSON only.",
+            user: prompt
+        )
+        let data = try Self.jsonObjectData(from: content)
+        return try JSONDecoder().decode(AIPlanResult.self, from: data)
     }
 
     func complete(system: String, user: String) async throws -> String {
@@ -79,7 +101,20 @@ final class AIClient {
             system: "You are Offscreen's strict but fair habit coach. Return valid compact JSON only.",
             user: prompt
         )
-        let data = Data(content.utf8)
+        let data = try Self.jsonObjectData(from: content)
         return try JSONDecoder().decode(AIReviewResult.self, from: data)
+    }
+
+    private static func jsonObjectData(from content: String) throws -> Data {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("{"), trimmed.hasSuffix("}") {
+            return Data(trimmed.utf8)
+        }
+
+        guard let start = trimmed.firstIndex(of: "{"), let end = trimmed.lastIndex(of: "}"), start <= end else {
+            throw URLError(.cannotParseResponse)
+        }
+
+        return Data(trimmed[start...end].utf8)
     }
 }

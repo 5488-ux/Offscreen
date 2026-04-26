@@ -7,6 +7,8 @@ struct OnboardingView: View {
     @State private var aiSettings = AISettings()
     @State private var apiKey = ""
     @State private var goal = UserGoal()
+    @State private var isGeneratingPlan = false
+    @State private var planMessage = ""
 
     private let lastStep = 3
 
@@ -34,7 +36,7 @@ struct OnboardingView: View {
 
                     Spacer()
 
-                    Button(step == lastStep ? "生成规则并开始" : "下一步") {
+                    Button(step == lastStep ? (isGeneratingPlan ? "生成中..." : "生成规则并开始") : "下一步") {
                         if step == lastStep {
                             finish()
                         } else {
@@ -42,6 +44,7 @@ struct OnboardingView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(isGeneratingPlan)
                 }
                 .padding()
             }
@@ -160,6 +163,11 @@ struct OnboardingView: View {
                 SummaryRow(title: "奖励", value: "运动、打卡、未超额")
                 SummaryRow(title: "惩罚", value: "未打卡、未看短片、超额、尝试取消")
                 SummaryRow(title: "取消计划", value: "必须先完成 90 分钟冷静期")
+                if !planMessage.isEmpty {
+                    Text(planMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("权限提醒") {
@@ -178,10 +186,20 @@ struct OnboardingView: View {
         }
         store.saveAISettings(aiSettings)
         store.saveUserGoal(goal)
-        store.completeOnboarding()
+        isGeneratingPlan = true
+        planMessage = ""
+
         Task {
+            do {
+                try await store.generateAIPlan()
+                planMessage = "AI 已生成 30 天计划"
+            } catch {
+                planMessage = "AI 计划生成失败，已使用本地默认计划：\(error.localizedDescription)"
+            }
+            store.completeOnboarding()
             _ = await NotificationManager.shared.requestAuthorization()
             NotificationManager.shared.scheduleDailyCheckIn()
+            isGeneratingPlan = false
         }
     }
 }

@@ -109,6 +109,45 @@ final class OffscreenStore: ObservableObject {
         }
     }
 
+    func generateAIPlan() async throws {
+        guard aiSettings.allowsScreenSummaryAnalysis else { return }
+        guard let client = try makeAIClient() else { return }
+        let aiPlan = try await client.generatePlan(goal: userGoal, summary: makeUsageSummary())
+        plan = PlanEngine.makePlan(
+            startDate: Date(),
+            targetMinutes: userGoal.targetDailyMinutes,
+            dailyLimits: aiPlan.dailyLimitMinutes
+        )
+        save(plan, key: StorageKey.plan)
+    }
+
+    func reviewCheckInAndSave(text: String, imagePath: String? = nil) async throws {
+        var review: AIReviewResult?
+        if aiSettings.allowsDailyReflectionAnalysis, let client = try makeAIClient() {
+            review = try await client.reviewDailyCheckIn(text: text, usage: makeUsageSummary(), health: healthSummary)
+        }
+        addCheckIn(text: text, imagePath: imagePath, review: review)
+    }
+
+    private func makeUsageSummary() -> UsageSummary {
+        UsageSummary(
+            date: Date(),
+            totalScreenMinutes: today.usedMinutes,
+            entertainmentMinutes: today.usedMinutes,
+            socialMinutes: 0,
+            gameMinutes: 0,
+            isOverLimit: today.usedMinutes > today.finalLimitMinutes
+        )
+    }
+
+    private func makeAIClient() throws -> AIClient? {
+        guard aiSettings.hasAPIKey else { return nil }
+        guard let apiKey = try KeychainStore.read(account: SecretAccount.aiAPIKey), !apiKey.isEmpty else {
+            return nil
+        }
+        return AIClient(settings: aiSettings, apiKey: apiKey)
+    }
+
     func updateVideo(kind: VideoKind, validSeconds: Int) {
         let today = Calendar.current.startOfDay(for: Date())
         let required = kind.requiredSeconds

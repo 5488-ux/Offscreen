@@ -25,6 +25,7 @@ targets:
         INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock local Offscreen settings.
         INFOPLIST_KEY_NSHealthShareUsageDescription: Offscreen uses Apple Health activity data to calculate small screen-time rewards.
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Offscreen lets you attach one daily reflection image.
+        CODE_SIGN_ENTITLEMENTS: Offscreen/Offscreen.entitlements
       configs:
         Release:
           CODE_SIGN_STYLE: Manual

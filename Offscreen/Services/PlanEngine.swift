@@ -32,4 +32,33 @@ enum PlanEngine {
             days: days
         )
     }
+
+    static func makePlan(startDate: Date = Date(), targetMinutes: Int = 15, dailyLimits: [Int]) -> OffscreenPlan {
+        let calendar = Calendar.current
+        let target = max(5, targetMinutes)
+        let normalizedLimits = Array(dailyLimits.prefix(30))
+        let paddedLimits = normalizedLimits + Array(repeating: normalizedLimits.last ?? target, count: max(0, 30 - normalizedLimits.count))
+
+        let days = paddedLimits.enumerated().map { index, limit in
+            PlanDay(
+                dayIndex: index + 1,
+                date: calendar.date(byAdding: .day, value: index, to: calendar.startOfDay(for: startDate)) ?? startDate,
+                baseLimitMinutes: max(target, limit),
+                rewardMinutes: 0,
+                penaltyMinutes: 0,
+                usedMinutes: 0,
+                completedCheckIn: false,
+                completedVideo: false,
+                completedHealthGoal: false
+            )
+        }
+
+        return OffscreenPlan(
+            startDate: calendar.startOfDay(for: startDate),
+            status: .active,
+            targetFinalMinutes: target,
+            extendedDays: 0,
+            days: days
+        )
+    }
 }
