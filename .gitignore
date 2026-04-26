@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.ipa
+*.xcarchive
+Offscreen/LocalAIConfig.json
+
