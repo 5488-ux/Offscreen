@@ -4,12 +4,14 @@ import Foundation
 @MainActor
 final class OffscreenStore: ObservableObject {
     @Published var aiSettings: AISettings
+    @Published var userGoal: UserGoal
     @Published var plan: OffscreenPlan
     @Published var checkIns: [DailyCheckIn]
     @Published var videoProgress: [VideoProgress]
     @Published var penaltyEvents: [PenaltyEvent]
     @Published var playSession: PlaySessionState
     @Published var healthSummary: HealthRewardSummary?
+    @Published var hasCompletedOnboarding: Bool
 
     private let defaults = UserDefaults.standard
     private let encoder = JSONEncoder()
@@ -20,21 +22,49 @@ final class OffscreenStore: ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
 
         self.aiSettings = Self.load(AISettings.self, key: StorageKey.aiSettings) ?? AISettings()
+        self.userGoal = Self.load(UserGoal.self, key: StorageKey.userGoal) ?? UserGoal()
         self.plan = Self.load(OffscreenPlan.self, key: StorageKey.plan) ?? PlanEngine.makeDefaultPlan()
         self.checkIns = Self.load([DailyCheckIn].self, key: StorageKey.checkIns) ?? []
         self.videoProgress = Self.load([VideoProgress].self, key: StorageKey.videoProgress) ?? Self.defaultVideoProgress()
         self.penaltyEvents = Self.load([PenaltyEvent].self, key: StorageKey.penaltyEvents) ?? []
         self.playSession = Self.load(PlaySessionState.self, key: StorageKey.playSession) ?? PlaySessionState(isActive: false, startedAt: nil, plannedMinutes: 0, endsAt: nil)
         self.healthSummary = Self.load(HealthRewardSummary.self, key: StorageKey.healthSummary)
+        self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: StorageKey.hasCompletedOnboarding)
     }
 
     var today: PlanDay {
         plan.today
     }
 
+    var dailyTasks: [DailyTask] {
+        [
+            DailyTask(title: "观看每日 5 分钟短片", subtitle: "必须在 App 前台播放才计时", isDone: today.completedVideo, systemImage: "play.rectangle"),
+            DailyTask(title: "晚上 9 点打卡", subtitle: "写总结并上传图片后可让 AI 复盘", isDone: today.completedCheckIn, systemImage: "square.and.pencil"),
+            DailyTask(title: "完成健康奖励", subtitle: "步数和运动可奖励少量额度", isDone: today.completedHealthGoal, systemImage: "heart"),
+            DailyTask(title: "不超出今日额度", subtitle: "超额会减少明天额度或延长计划", isDone: today.usedMinutes <= today.finalLimitMinutes, systemImage: "timer")
+        ]
+    }
+
     func saveAISettings(_ settings: AISettings) {
         aiSettings = settings
         save(settings, key: StorageKey.aiSettings)
+    }
+
+    func saveUserGoal(_ goal: UserGoal) {
+        userGoal = goal
+        save(goal, key: StorageKey.userGoal)
+        plan = PlanEngine.makeDefaultPlan(startDate: Date(), currentMinutes: goal.currentDailyMinutes, targetMinutes: goal.targetDailyMinutes)
+        save(plan, key: StorageKey.plan)
+    }
+
+    func completeOnboarding() {
+        hasCompletedOnboarding = true
+        defaults.set(true, forKey: StorageKey.hasCompletedOnboarding)
+    }
+
+    func reopenOnboarding() {
+        hasCompletedOnboarding = false
+        defaults.set(false, forKey: StorageKey.hasCompletedOnboarding)
     }
 
     func startPlaySession(minutes: Int) {
@@ -127,7 +157,7 @@ final class OffscreenStore: ObservableObject {
     }
 
     func resetPlan() {
-        plan = PlanEngine.makeDefaultPlan()
+        plan = PlanEngine.makeDefaultPlan(startDate: Date(), currentMinutes: userGoal.currentDailyMinutes, targetMinutes: userGoal.targetDailyMinutes)
         save(plan, key: StorageKey.plan)
     }
 
@@ -161,10 +191,12 @@ final class OffscreenStore: ObservableObject {
 
 private enum StorageKey {
     static let aiSettings = "offscreen.aiSettings"
+    static let userGoal = "offscreen.userGoal"
     static let plan = "offscreen.plan"
     static let checkIns = "offscreen.checkIns"
     static let videoProgress = "offscreen.videoProgress"
     static let penaltyEvents = "offscreen.penaltyEvents"
     static let playSession = "offscreen.playSession"
     static let healthSummary = "offscreen.healthSummary"
+    static let hasCompletedOnboarding = "offscreen.hasCompletedOnboarding"
 }

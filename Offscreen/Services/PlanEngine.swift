@@ -1,12 +1,16 @@
 import Foundation
 
 enum PlanEngine {
-    static func makeDefaultPlan(startDate: Date = Date()) -> OffscreenPlan {
+    static func makeDefaultPlan(startDate: Date = Date(), currentMinutes: Int = 120, targetMinutes: Int = 15) -> OffscreenPlan {
         let calendar = Calendar.current
-        let limits = stride(from: 120, through: 15, by: -4).map { $0 }
-        let paddedLimits = limits + Array(repeating: 15, count: max(0, 30 - limits.count))
+        let start = max(currentMinutes, targetMinutes)
+        let target = max(5, targetMinutes)
+        let step = max(1, Int(ceil(Double(start - target) / 29.0)))
+        let limits = (0..<30).map { day in
+            max(target, start - day * step)
+        }
 
-        let days = paddedLimits.prefix(30).enumerated().map { index, limit in
+        let days = limits.enumerated().map { index, limit in
             PlanDay(
                 dayIndex: index + 1,
                 date: calendar.date(byAdding: .day, value: index, to: calendar.startOfDay(for: startDate)) ?? startDate,
@@ -23,7 +27,7 @@ enum PlanEngine {
         return OffscreenPlan(
             startDate: calendar.startOfDay(for: startDate),
             status: .active,
-            targetFinalMinutes: 15,
+            targetFinalMinutes: target,
             extendedDays: 0,
             days: days
         )

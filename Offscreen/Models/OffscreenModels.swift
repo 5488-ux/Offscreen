@@ -8,6 +8,29 @@ struct AISettings: Codable, Equatable {
     var hasAPIKey: Bool = false
 }
 
+struct UserGoal: Codable, Equatable {
+    var targetDailyMinutes: Int = 15
+    var currentDailyMinutes: Int = 120
+    var severity: Severity = .medium
+    var motivation: String = ""
+}
+
+enum Severity: String, Codable, CaseIterable, Identifiable {
+    case light
+    case medium
+    case heavy
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .light: "轻度依赖"
+        case .medium: "中度依赖"
+        case .heavy: "重度依赖"
+        }
+    }
+}
+
 struct PlanDay: Codable, Identifiable, Equatable {
     var id = UUID()
     var dayIndex: Int
@@ -74,6 +97,14 @@ struct UsageSummary: Codable, Equatable {
     var socialMinutes: Int
     var gameMinutes: Int
     var isOverLimit: Bool
+}
+
+struct DailyTask: Identifiable, Equatable {
+    let id = UUID()
+    var title: String
+    var subtitle: String
+    var isDone: Bool
+    var systemImage: String
 }
 
 struct HealthRewardSummary: Codable, Equatable {

@@ -49,6 +49,13 @@ struct SettingsView: View {
                 }
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+                Section("开发调试") {
+                    Button("重新进入首次设置") {
+                        store.reopenOnboarding()
+                    }
+                    .foregroundStyle(.red)
+                }
             }
             .navigationTitle("设置")
             .onAppear {
