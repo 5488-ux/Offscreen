@@ -6,7 +6,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.10
-    PRODUCT_BUNDLE_IDENTIFIER: app.mango7143.offscreen
+    PRODUCT_BUNDLE_IDENTIFIER: app.mango7143.test8374
     MARKETING_VERSION: 2.0
     CURRENT_PROJECT_VERSION: 2
 targets:
