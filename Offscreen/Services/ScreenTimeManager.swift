@@ -17,7 +17,12 @@ final class ScreenTimeManager: ObservableObject {
             try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
             statusText = "已授权"
         } catch {
-            statusText = "授权失败：\(error.localizedDescription)"
+            let message = error.localizedDescription
+            if message.localizedCaseInsensitiveContains("helper") {
+                statusText = "授权失败：当前 IPA 的 Bundle ID 或 FamilyControls entitlement 不匹配。请使用 Offscreen 专用描述文件重新签名。"
+            } else {
+                statusText = "授权失败：\(message)"
+            }
         }
     }
 
