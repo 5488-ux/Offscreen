@@ -20,7 +20,7 @@ final class VideoWatchTracker: ObservableObject {
         self.isCompleted = existingProgress.completed
         self.player = Self.makePlayer(kind: kind)
         if player == nil {
-            message = "Add \(kind.bundledFileName).mp4 to the app bundle."
+            message = "请把 \(kind.bundledFileName).mp4 加入 App Bundle。"
         }
     }
 
@@ -64,4 +64,3 @@ final class VideoWatchTracker: ObservableObject {
         return AVPlayer(url: url)
     }
 }
-

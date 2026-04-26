@@ -9,24 +9,24 @@ struct DashboardView: View {
             List {
                 Section {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("\(store.today.remainingMinutes) min")
+                        Text("\(store.today.remainingMinutes) 分钟")
                             .font(.system(size: 48, weight: .bold, design: .rounded))
-                        Text("remaining from \(store.today.finalLimitMinutes) minutes today")
+                        Text("今日额度 \(store.today.finalLimitMinutes) 分钟")
                             .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 8)
                 }
 
-                Section("Play session") {
-                    Stepper("Session length: \(sessionMinutes) min", value: $sessionMinutes, in: 5...60, step: 5)
+                Section("我要玩手机") {
+                    Stepper("本次时长：\(sessionMinutes) 分钟", value: $sessionMinutes, in: 5...60, step: 5)
 
                     if store.playSession.isActive {
-                        Button("End session") {
+                        Button("结束本次使用") {
                             store.stopPlaySession()
                         }
                         .foregroundStyle(.red)
                     } else {
-                        Button("I want to use my phone") {
+                        Button("我要玩手机") {
                             let minutes = min(sessionMinutes, store.today.remainingMinutes)
                             store.startPlaySession(minutes: minutes)
                             if minutes > 10 {
@@ -37,20 +37,20 @@ struct DashboardView: View {
                     }
                 }
 
-                Section("Daily tasks") {
-                    TaskRow(title: "5 minute video", done: store.today.completedVideo)
-                    TaskRow(title: "9 PM reflection", done: store.today.completedCheckIn)
-                    TaskRow(title: "Health reward", done: store.today.completedHealthGoal)
-                    TaskRow(title: "Stay under limit", done: store.today.usedMinutes <= store.today.finalLimitMinutes)
+                Section("每日任务") {
+                    TaskRow(title: "观看 5 分钟短片", done: store.today.completedVideo)
+                    TaskRow(title: "晚上 9 点打卡", done: store.today.completedCheckIn)
+                    TaskRow(title: "完成健康奖励", done: store.today.completedHealthGoal)
+                    TaskRow(title: "没有超出额度", done: store.today.usedMinutes <= store.today.finalLimitMinutes)
                 }
 
-                Section("Health") {
+                Section("健康奖励") {
                     if let summary = store.healthSummary {
-                        Text("\(summary.steps) steps")
-                        Text("\(summary.exerciseMinutes) exercise minutes")
-                        Text("+\(summary.rewardMinutes) reward minutes")
+                        Text("\(summary.steps) 步")
+                        Text("运动 \(summary.exerciseMinutes) 分钟")
+                        Text("奖励 +\(summary.rewardMinutes) 分钟")
                     } else {
-                        Text("No health summary loaded.")
+                        Text("还没有读取今日健康数据。")
                             .foregroundStyle(.secondary)
                     }
                 }

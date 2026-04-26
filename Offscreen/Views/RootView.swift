@@ -4,27 +4,27 @@ struct RootView: View {
     var body: some View {
         TabView {
             DashboardView()
-                .tabItem { Label("Today", systemImage: "timer") }
+                .tabItem { Label("今天", systemImage: "timer") }
 
             ControlView()
-                .tabItem { Label("Control", systemImage: "lock.shield") }
+                .tabItem { Label("限制", systemImage: "lock.shield") }
 
             VideoHubView()
-                .tabItem { Label("Video", systemImage: "play.rectangle") }
+                .tabItem { Label("短片", systemImage: "play.rectangle") }
 
             NavigationStack {
                 HealthView()
             }
-            .tabItem { Label("Health", systemImage: "heart") }
+            .tabItem { Label("健康", systemImage: "heart") }
 
             PlanView()
-                .tabItem { Label("Plan", systemImage: "calendar") }
+                .tabItem { Label("计划", systemImage: "calendar") }
 
             CheckInView()
-                .tabItem { Label("Check-in", systemImage: "square.and.pencil") }
+                .tabItem { Label("打卡", systemImage: "square.and.pencil") }
 
             SettingsView()
-                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tabItem { Label("设置", systemImage: "gearshape") }
         }
     }
 }

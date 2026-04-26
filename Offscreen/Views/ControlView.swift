@@ -11,10 +11,10 @@ struct ControlView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Authorization") {
+                Section("授权") {
                     Text(screenTime.statusText)
                         .foregroundStyle(.secondary)
-                    Button("Request Screen Time authorization") {
+                    Button("请求 Screen Time 授权") {
                         Task {
                             await screenTime.requestAuthorization()
                         }
@@ -22,16 +22,16 @@ struct ControlView: View {
                 }
 
                 #if canImport(FamilyControls)
-                Section("Restricted apps") {
+                Section("限制 App") {
                     FamilyActivityPicker(selection: $screenTime.restrictedSelection)
                         .frame(minHeight: 280)
                 }
 
-                Section("Restrictions") {
-                    Button("Apply restrictions") {
+                Section("限制控制") {
+                    Button("开启限制") {
                         restrictions.applyRestrictions(selection: screenTime.restrictedSelection)
                     }
-                    Button("Clear restrictions") {
+                    Button("解除限制") {
                         restrictions.clearRestrictions()
                     }
                     .foregroundStyle(.red)
@@ -39,13 +39,12 @@ struct ControlView: View {
                         .foregroundStyle(.secondary)
                 }
                 #else
-                Section("Unavailable") {
-                    Text("FamilyControls is unavailable in this build environment.")
+                Section("不可用") {
+                    Text("当前构建环境不可用 FamilyControls。")
                 }
                 #endif
             }
-            .navigationTitle("Control")
+            .navigationTitle("限制")
         }
     }
 }
-

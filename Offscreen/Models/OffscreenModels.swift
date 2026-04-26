@@ -99,8 +99,8 @@ enum VideoKind: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .daily: "Daily video"
-        case .cancellation: "Cancellation cooldown"
+        case .daily: "每日短片"
+        case .cancellation: "取消冷静期"
         }
     }
 

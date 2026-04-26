@@ -8,7 +8,7 @@ import ManagedSettings
 @MainActor
 final class RestrictionManager: ObservableObject {
     @Published var isShieldActive = false
-    @Published var lastMessage = "Restrictions are inactive."
+    @Published var lastMessage = "当前未开启限制。"
 
     #if canImport(FamilyControls) && canImport(ManagedSettings)
     private let store = ManagedSettingsStore()
@@ -17,24 +17,23 @@ final class RestrictionManager: ObservableObject {
         store.shield.applications = selection.applicationTokens.isEmpty ? nil : selection.applicationTokens
         store.shield.webDomains = selection.webDomainTokens.isEmpty ? nil : selection.webDomainTokens
         isShieldActive = true
-        lastMessage = "Restrictions applied."
+        lastMessage = "已开启限制。"
     }
 
     func clearRestrictions() {
         store.clearAllSettings()
         isShieldActive = false
-        lastMessage = "Restrictions cleared."
+        lastMessage = "已解除限制。"
     }
     #else
     func applyRestrictions() {
         isShieldActive = false
-        lastMessage = "ManagedSettings is unavailable in this build."
+        lastMessage = "当前构建不可用 ManagedSettings。"
     }
 
     func clearRestrictions() {
         isShieldActive = false
-        lastMessage = "Restrictions cleared locally."
+        lastMessage = "已在本地清除限制状态。"
     }
     #endif
 }
-

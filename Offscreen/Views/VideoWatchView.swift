@@ -20,22 +20,22 @@ struct VideoWatchView: View {
                     .aspectRatio(16 / 9, contentMode: .fit)
                     .background(Color.black)
             } else {
-                ContentUnavailableView("Video missing", systemImage: "film", description: Text(tracker.message))
+                ContentUnavailableView("缺少视频", systemImage: "film", description: Text(tracker.message))
             }
 
             ProgressView(value: Double(tracker.validSeconds), total: Double(tracker.kind.requiredSeconds))
                 .padding(.horizontal)
 
-            Text("\(tracker.validSeconds / 60)m \(tracker.validSeconds % 60)s / \(tracker.kind.requiredSeconds / 60)m")
+            Text("\(tracker.validSeconds / 60)分 \(tracker.validSeconds % 60)秒 / \(tracker.kind.requiredSeconds / 60)分")
                 .font(.headline)
 
             HStack {
-                Button("Play") {
+                Button("播放") {
                     tracker.start()
                 }
                 .buttonStyle(.borderedProminent)
 
-                Button("Pause") {
+                Button("暂停") {
                     tracker.pause()
                     store.updateVideo(kind: tracker.kind, validSeconds: tracker.validSeconds)
                 }
@@ -43,7 +43,7 @@ struct VideoWatchView: View {
             }
 
             if tracker.isCompleted {
-                Text("Completed")
+                Text("已完成")
                     .foregroundStyle(.green)
             }
 
@@ -71,4 +71,3 @@ struct VideoWatchView: View {
         }
     }
 }
-

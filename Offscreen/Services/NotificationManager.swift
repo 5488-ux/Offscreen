@@ -20,8 +20,8 @@ final class NotificationManager {
         date.minute = 0
 
         let content = UNMutableNotificationContent()
-        content.title = "Offscreen check-in"
-        content.body = "Write tonight's reflection and finish your plan for tomorrow."
+        content.title = "Offscreen 每日打卡"
+        content.body = "写下今晚的总结，并完成明天的戒手机计划。"
         content.sound = .default
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: date, repeats: true)
@@ -31,8 +31,8 @@ final class NotificationManager {
 
     func scheduleSessionWarning(after seconds: TimeInterval) {
         let content = UNMutableNotificationContent()
-        content.title = "10 minutes left"
-        content.body = "Your Offscreen play session is almost over."
+        content.title = "还剩 10 分钟"
+        content.body = "这次玩手机时间快结束了。"
         content.sound = .default
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, seconds), repeats: false)
@@ -40,4 +40,3 @@ final class NotificationManager {
         UNUserNotificationCenter.current().add(request)
     }
 }
-

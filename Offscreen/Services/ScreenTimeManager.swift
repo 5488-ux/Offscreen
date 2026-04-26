@@ -6,7 +6,7 @@ import FamilyControls
 
 @MainActor
 final class ScreenTimeManager: ObservableObject {
-    @Published var statusText = "Not authorized"
+    @Published var statusText = "未授权"
 
     #if canImport(FamilyControls)
     @Published var restrictedSelection = FamilyActivitySelection()
@@ -15,9 +15,9 @@ final class ScreenTimeManager: ObservableObject {
     func requestAuthorization() async {
         do {
             try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
-            statusText = "Authorized"
+            statusText = "已授权"
         } catch {
-            statusText = "Authorization failed: \(error.localizedDescription)"
+            statusText = "授权失败：\(error.localizedDescription)"
         }
     }
 
@@ -26,10 +26,9 @@ final class ScreenTimeManager: ObservableObject {
     }
     #else
     func requestAuthorization() async {
-        statusText = "Screen Time frameworks unavailable in this build."
+        statusText = "当前构建不可用 Screen Time 框架。"
     }
 
     var authorizationApproved: Bool { false }
     #endif
 }
-

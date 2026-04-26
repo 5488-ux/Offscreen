@@ -7,19 +7,19 @@ struct HealthView: View {
 
     var body: some View {
         List {
-            Section("Apple Health") {
-                Button("Authorize Health") {
+            Section("Apple 健康") {
+                Button("授权健康数据") {
                     Task {
                         let ok = await manager.requestAuthorization()
-                        message = ok ? "Authorized" : "Authorization failed or unavailable"
+                        message = ok ? "已授权" : "授权失败或当前不可用"
                     }
                 }
 
-                Button("Load today's activity") {
+                Button("读取今日活动") {
                     Task {
                         let summary = await manager.todaySummary()
                         store.applyHealthReward(summary)
-                        message = "Loaded +\(summary.rewardMinutes) minutes"
+                        message = "已读取，奖励 +\(summary.rewardMinutes) 分钟"
                     }
                 }
 
@@ -29,7 +29,6 @@ struct HealthView: View {
                 }
             }
         }
-        .navigationTitle("Health")
+        .navigationTitle("健康")
     }
 }
-
