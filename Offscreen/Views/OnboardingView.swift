@@ -2,25 +2,26 @@ import SwiftUI
 
 struct OnboardingView: View {
     @EnvironmentObject private var store: OffscreenStore
+    @StateObject private var screenTime = ScreenTimeManager()
     @State private var step = 0
     @State private var aiSettings = AISettings()
     @State private var apiKey = ""
     @State private var goal = UserGoal()
 
+    private let lastStep = 3
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 TabView(selection: $step) {
-                    introPage
+                    screenTimePage
                         .tag(0)
                     aiPage
                         .tag(1)
                     goalPage
                         .tag(2)
-                    permissionPage
+                    analysisPage
                         .tag(3)
-                    readyPage
-                        .tag(4)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .always))
 
@@ -33,8 +34,8 @@ struct OnboardingView: View {
 
                     Spacer()
 
-                    Button(step == 4 ? "开始戒断" : "下一步") {
-                        if step == 4 {
+                    Button(step == lastStep ? "生成规则并开始" : "下一步") {
+                        if step == lastStep {
                             finish()
                         } else {
                             withAnimation { step += 1 }
@@ -52,25 +53,50 @@ struct OnboardingView: View {
         }
     }
 
-    private var introPage: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Spacer()
-            Image(systemName: "iphone.slash")
-                .font(.system(size: 56, weight: .semibold))
-                .foregroundStyle(.blue)
-            Text("AI 戒手机计划")
-                .font(.largeTitle.bold())
-            Text("Offscreen 会根据你的屏幕使用摘要、每日打卡、短片完成情况和健康数据，逐步降低娱乐 App 使用时间。")
-                .font(.body)
-                .foregroundStyle(.secondary)
-            Spacer()
+    private var screenTimePage: some View {
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 14) {
+                    Image(systemName: "chart.bar.xaxis")
+                        .font(.system(size: 48, weight: .semibold))
+                        .foregroundStyle(.blue)
+                    Text("第一步：查看屏幕使用时间")
+                        .font(.title.bold())
+                    Text("Offscreen 需要先通过 iOS Screen Time 授权，了解你选择的娱乐、社交、游戏 App 使用情况，然后整理成摘要给 AI 分析。")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8)
+            }
+
+            Section("Screen Time 授权") {
+                Text(screenTime.statusText)
+                    .foregroundStyle(.secondary)
+                Button("授权并选择要限制的 App") {
+                    Task {
+                        await screenTime.requestAuthorization()
+                    }
+                }
+            }
+
+            Section("会整理给 AI 的摘要") {
+                SummaryRow(title: "今日娱乐类 App 使用时间", value: "授权后统计")
+                SummaryRow(title: "今日社交类 App 使用时间", value: "授权后统计")
+                SummaryRow(title: "今日游戏类 App 使用时间", value: "授权后统计")
+                SummaryRow(title: "是否超过今日额度", value: "生成计划后判断")
+                SummaryRow(title: "最近几天趋势", value: "持续使用后生成")
+            }
+
+            Section("iOS 限制") {
+                Text("普通 iOS App 不能直接关闭其他 App，只能通过 Screen Time 相关能力限制访问。用户仍可能卸载 App 或关闭授权。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .padding(28)
     }
 
     private var aiPage: some View {
         Form {
-            Section("AI API 设置") {
+            Section("第二步：填写 AI API") {
                 SecureField("API Key", text: $apiKey)
                 TextField("Base URL", text: $aiSettings.baseURL)
                     .textInputAutocapitalization(.never)
@@ -82,7 +108,7 @@ struct OnboardingView: View {
             }
 
             Section {
-                Text("AI 不能直接读取手机数据，只能分析 Offscreen 整理后的摘要。")
+                Text("AI 不能直接读取手机数据。Offscreen 会先在本地整理摘要，再按你的授权发送给 AI。")
                     .foregroundStyle(.secondary)
             }
         }
@@ -90,7 +116,7 @@ struct OnboardingView: View {
 
     private var goalPage: some View {
         Form {
-            Section("你的目标") {
+            Section("第三步：填写戒断目标") {
                 Stepper("当前娱乐使用：\(goal.currentDailyMinutes) 分钟/天", value: $goal.currentDailyMinutes, in: 30...480, step: 15)
                 Stepper("最终目标：\(goal.targetDailyMinutes) 分钟/天", value: $goal.targetDailyMinutes, in: 5...120, step: 5)
                 Picker("依赖程度", selection: $goal.severity) {
@@ -112,34 +138,37 @@ struct OnboardingView: View {
         }
     }
 
-    private var permissionPage: some View {
+    private var analysisPage: some View {
         List {
-            Section("需要的权限") {
+            Section {
+                VStack(alignment: .leading, spacing: 14) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 48, weight: .semibold))
+                        .foregroundStyle(.blue)
+                    Text("第四步：自动分析并制定规则")
+                        .font(.title.bold())
+                    Text("Offscreen 会结合屏幕使用摘要、你的目标、依赖程度和后续每日表现，生成 30 天戒断计划。")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8)
+            }
+
+            Section("即将生成的规则") {
+                SummaryRow(title: "第 1 天额度", value: "\(max(goal.currentDailyMinutes, goal.targetDailyMinutes)) 分钟")
+                SummaryRow(title: "最终目标", value: "\(goal.targetDailyMinutes) 分钟/天")
+                SummaryRow(title: "每日必做", value: "5 分钟短片 + 晚上 9 点打卡")
+                SummaryRow(title: "奖励", value: "运动、打卡、未超额")
+                SummaryRow(title: "惩罚", value: "未打卡、未看短片、超额、尝试取消")
+                SummaryRow(title: "取消计划", value: "必须先完成 90 分钟冷静期")
+            }
+
+            Section("权限提醒") {
                 PermissionRow(icon: "lock.shield", title: "Screen Time", detail: "用于限制非白名单 App。")
                 PermissionRow(icon: "heart", title: "Apple 健康", detail: "用于步数和运动奖励，可稍后开启。")
                 PermissionRow(icon: "bell", title: "通知", detail: "用于晚上 9 点打卡和倒计时提醒。")
                 PermissionRow(icon: "photo", title: "照片", detail: "用于每日打卡图片，可稍后添加。")
             }
-
-            Section("iOS 限制") {
-                Text("普通 App 不能杀掉其他 App，也不能 100% 阻止卸载或关闭授权。Offscreen 会通过系统允许的 Screen Time 能力实现限制。")
-                    .foregroundStyle(.secondary)
-            }
         }
-    }
-
-    private var readyPage: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Spacer()
-            Text("你的 30 天计划已准备好")
-                .font(.largeTitle.bold())
-            Text("第 1 天从 \(max(goal.currentDailyMinutes, goal.targetDailyMinutes)) 分钟开始，逐步降低到每天 \(goal.targetDailyMinutes) 分钟左右。")
-                .foregroundStyle(.secondary)
-            Text("每天完成短片、打卡、健康任务并不超额，就可以获得少量奖励；失败会减少明天额度或延长计划。")
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
-        .padding(28)
     }
 
     private func finish() {
@@ -153,6 +182,21 @@ struct OnboardingView: View {
         Task {
             _ = await NotificationManager.shared.requestAuthorization()
             NotificationManager.shared.scheduleDailyCheckIn()
+        }
+    }
+}
+
+private struct SummaryRow: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
         }
     }
 }
@@ -178,4 +222,3 @@ private struct PermissionRow: View {
         .padding(.vertical, 4)
     }
 }
-
