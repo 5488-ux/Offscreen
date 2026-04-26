@@ -65,16 +65,16 @@ struct OnboardingView: View {
                         .foregroundStyle(.blue)
                     Text("第一步：查看屏幕使用时间")
                         .font(.title.bold())
-                    Text("Offscreen 需要先通过 iOS Screen Time 授权，了解你选择的娱乐、社交、游戏 App 使用情况，然后整理成摘要给 AI 分析。")
+                    Text("淘宝证书版不请求 iOS Screen Time 授权。你仍可以填写目标，让 AI 生成计划并进行每日打卡复盘。")
                         .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 8)
             }
 
-            Section("Screen Time 授权") {
+            Section("Screen Time 状态") {
                 Text(screenTime.statusText)
                     .foregroundStyle(.secondary)
-                Button("授权并选择要限制的 App") {
+                Button("检查当前签名能力") {
                     Task {
                         await screenTime.requestAuthorization()
                     }
@@ -82,15 +82,15 @@ struct OnboardingView: View {
             }
 
             Section("会整理给 AI 的摘要") {
-                SummaryRow(title: "今日娱乐类 App 使用时间", value: "授权后统计")
-                SummaryRow(title: "今日社交类 App 使用时间", value: "授权后统计")
-                SummaryRow(title: "今日游戏类 App 使用时间", value: "授权后统计")
-                SummaryRow(title: "是否超过今日额度", value: "生成计划后判断")
-                SummaryRow(title: "最近几天趋势", value: "持续使用后生成")
+                SummaryRow(title: "当前娱乐使用", value: "\(goal.currentDailyMinutes) 分钟/天")
+                SummaryRow(title: "目标娱乐使用", value: "\(goal.targetDailyMinutes) 分钟/天")
+                SummaryRow(title: "依赖程度", value: goal.severity.title)
+                SummaryRow(title: "是否超过今日额度", value: "根据本地计划判断")
+                SummaryRow(title: "每日趋势", value: "通过打卡和本地记录生成")
             }
 
             Section("iOS 限制") {
-                Text("普通 iOS App 不能直接关闭其他 App，只能通过 Screen Time 相关能力限制访问。用户仍可能卸载 App 或关闭授权。")
+                Text("当前版本不会限制其他 App。需要真实限制时，必须重新使用带 FamilyControls entitlement 的官方 Apple 描述文件打包。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -171,7 +171,7 @@ struct OnboardingView: View {
             }
 
             Section("权限提醒") {
-                PermissionRow(icon: "lock.shield", title: "Screen Time", detail: "用于限制非白名单 App。")
+                PermissionRow(icon: "lock.shield", title: "Screen Time", detail: "淘宝证书版不启用。")
                 PermissionRow(icon: "heart", title: "Apple 健康", detail: "用于步数和运动奖励，可稍后开启。")
                 PermissionRow(icon: "bell", title: "通知", detail: "用于晚上 9 点打卡和倒计时提醒。")
                 PermissionRow(icon: "photo", title: "照片", detail: "用于每日打卡图片，可稍后添加。")

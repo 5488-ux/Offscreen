@@ -8,7 +8,7 @@ Offscreen is a self-use iOS app for reducing recreational screen time with AI-as
 - Local 30-day reduction plan
 - Keychain-backed AI API key storage and OpenAI-compatible client
 - Daily check-in flow with AI review data model
-- Screen Time authorization, picker, and ManagedSettings restriction entry points
+- Taobao-certificate compatible mode with Screen Time restriction disabled
 - HealthKit authorization and activity reward calculation
 - Daily video and cancellation cooldown valid-watch-time tracker
 - Local notification scheduling for the 9 PM check-in and session warning
@@ -40,4 +40,4 @@ The workflow in `.github/workflows/ios-build.yml` follows the existing `opsai-ss
 - `IOS_CERT_PEM_BASE64`
 - `IOS_KEY_PEM_BASE64`
 
-The code includes FamilyControls, ManagedSettings, and HealthKit integration points. Real device enforcement still requires the matching Apple capabilities and a provisioning profile that contains those entitlements.
+This branch is configured for provisioning profiles without FamilyControls. AI, check-ins, video, notifications, and HealthKit remain available, but real Screen Time enforcement requires an official provisioning profile that contains the FamilyControls entitlement.
