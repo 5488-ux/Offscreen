@@ -1,0 +1,154 @@
+name: text-editor-ipa
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/text-editor-ipa.yml
+
+jobs:
+  build:
+    runs-on: macos-26
+    env:
+      IOS_MOBILEPROVISION_BASE64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      IOS_BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
+      IOS_PROFILE_NAME: ${{ secrets.IOS_PROFILE_NAME }}
+      IOS_CERT_PEM_BASE64: ${{ secrets.IOS_CERT_PEM_BASE64 }}
+      IOS_KEY_PEM_BASE64: ${{ secrets.IOS_KEY_PEM_BASE64 }}
+
+    steps:
+      - name: Checkout text-editor
+        uses: actions/checkout@v4
+        with:
+          repository: 5488-ux/text-editor
+          ref: main
+          path: text-editor
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Verify Xcode 26 and iOS 26 SDK
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+          xcodebuild -showsdks | grep -q 'iphoneos26'
+          xcodebuild -showsdks | grep -q 'iphonesimulator26'
+
+      - name: Verify signing secrets
+        run: |
+          test -n "$IOS_CERT_PEM_BASE64"
+          test -n "$IOS_KEY_PEM_BASE64"
+          test -n "$IOS_MOBILEPROVISION_BASE64"
+          test -n "$IOS_TEAM_ID"
+          test -n "$IOS_BUNDLE_ID"
+          test -n "$IOS_PROFILE_NAME"
+
+      - name: Generate Xcode project
+        working-directory: text-editor
+        run: xcodegen generate
+
+      - name: Build for simulator
+        working-directory: text-editor
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project TextEditor.xcodeproj \
+            -scheme TextEditor \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            build | tee "$RUNNER_TEMP/text-editor-simulator.log"
+
+      - name: Prepare signing assets
+        run: |
+          mkdir -p "$RUNNER_TEMP/signing"
+          printf '%s' "$IOS_CERT_PEM_BASE64" | base64 --decode > "$RUNNER_TEMP/signing/certificate.pem"
+          printf '%s' "$IOS_KEY_PEM_BASE64" | base64 --decode > "$RUNNER_TEMP/signing/private_key.pem"
+          printf '%s' "$IOS_MOBILEPROVISION_BASE64" | base64 --decode > "$RUNNER_TEMP/signing/profile.mobileprovision"
+
+          security create-keychain -p runner build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p runner build.keychain
+          security import "$RUNNER_TEMP/signing/certificate.pem" -k build.keychain -T /usr/bin/codesign
+          security import "$RUNNER_TEMP/signing/private_key.pem" -k build.keychain -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k runner build.keychain
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$RUNNER_TEMP/signing/profile.mobileprovision" ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Verify provisioning profile bundle id
+        run: |
+          security cms -D -i "$RUNNER_TEMP/signing/profile.mobileprovision" > "$RUNNER_TEMP/signing/profile.plist"
+          PROFILE_APP_ID=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$RUNNER_TEMP/signing/profile.plist")
+          PROFILE_BUNDLE_ID=${PROFILE_APP_ID#${IOS_TEAM_ID}.}
+
+          if [ "$PROFILE_BUNDLE_ID" != "$IOS_BUNDLE_ID" ]; then
+            echo "Provisioning profile Bundle ID '$PROFILE_BUNDLE_ID' does not match IOS_BUNDLE_ID '$IOS_BUNDLE_ID'."
+            exit 1
+          fi
+
+      - name: Archive text-editor
+        working-directory: text-editor
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project TextEditor.xcodeproj \
+            -scheme TextEditor \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/TextEditor.xcarchive" \
+            IOS_TEAM_ID="$IOS_TEAM_ID" \
+            IOS_BUNDLE_ID="$IOS_BUNDLE_ID" \
+            IOS_PROFILE_NAME="$IOS_PROFILE_NAME" \
+            archive | tee "$RUNNER_TEMP/text-editor-archive.log"
+
+      - name: Export IPA
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>ad-hoc</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string>${IOS_TEAM_ID}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${IOS_BUNDLE_ID}</key>
+              <string>${IOS_PROFILE_NAME}</string>
+            </dict>
+            <key>stripSwiftSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+
+          set -o pipefail
+          xcodebuild \
+            -exportArchive \
+            -archivePath "$RUNNER_TEMP/TextEditor.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" | tee "$RUNNER_TEMP/text-editor-export.log"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: text-editor-ipa-logs
+          path: |
+            ${{ runner.temp }}/text-editor-simulator.log
+            ${{ runner.temp }}/text-editor-archive.log
+            ${{ runner.temp }}/text-editor-export.log
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: text-editor-ipa
+          path: ${{ runner.temp }}/export/*.ipa
